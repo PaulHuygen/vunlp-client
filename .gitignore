@@ -2,6 +2,31 @@
 __pycache__/
 *.py[cod]
 
+# LaTeX/nuweb stuff
+*.aux
+*.log
+*.bbl
+*.blg
+*.ilg
+*.idx
+*.ind
+*.out
+*.pdftex
+*.pstex
+*.toc
+nuweb/m4_vunlpclient.w
+nuweb/vunlpclient.w
+nuweb/vunlpclient.tex
+nuweb/*.pdftex_t
+nuweb/Makefile
+nuweb/nw000*
+nuweb/w2html
+nuweb/bin/
+
+# emacs
+*~
+/auto/
+
 # C extensions
 *.so
 
