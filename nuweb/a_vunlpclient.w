@@ -51,6 +51,36 @@ This document describes and implements client software that makes it
 easy to utilize the VU-nlp service.
 
 
+\subsection{How to use the service}
+\label{sec:howtouse}
+
+To use this facility it is pre-supposed that you have the following:
+
+\begin{enumerate}
+\item Access to the VU-NLP facility.
+\item A bunch of documents that have to be processed.
+\item A valid recipe (a prescription what Lisa should do with your documents.
+\item A decent computer on which Python has been installed.
+\end{enumerate}
+
+If you have all this, proceed as follows:
+
+\begin{enumerate}
+\item Clone the Github repository
+  \texttt{git@github.com:PaulHuygen/vunlp-client.git} somewhere on
+  your computer.
+\item Put your documents to be processed in the ``intray''
+  subdirectory of the clone.
+\item Run \texttt{client.py}
+\item At best,  keep \texttt{client.py} running until it has been
+  finished. Otherwise run in now and then to collect processed documents.
+\item When \texttt{client.py} is finished, find the processed
+  documents in the \texttt{outtray} directory and  the logfiles in the
+  \texttt{logtray} directory.
+  \end{itemize}
+\end{enumerate}
+
+
 \section{Technique}
 \label{sec:technique}
 
@@ -94,12 +124,6 @@ REQUEST_LOGRETRIEVE =   "{url}/batch/{batchid}/text/{textid}/log"
 @|REQUEST_ID REQUEST_UPLOAD REQUEST_STARTBATCH REQUEST_STATUS
 REQUEST_LOGCHECK REQUEST_RETRIEVE REQUEST_LOGRETRIEVE @}
 
-Currently, the client runs on a test-webserver on the local computer
-of the developer.
-
-@d user-controllable settings @{@%
-DEFAULT_URL = m4_defaulturl
-@|DEFAULT_URL @}
 
 
 \subsection{The client}
@@ -109,9 +133,9 @@ The client has the following properties:
 
 \begin{enumerate}
 \item It is a Python script. Python is present on any decent computer.
-\item It does not need special VUNLP libraries. However, it may need
-  Python libraries that are generally available but have to be
-  installed on your computer.
+\item It runs directly from the Github clone. You do not need special
+  VUNLP libraries. However, it may need Python libraries that are
+  generally available but have to be installed on your computer.
 \item One of its functions is, that it can be included in a directory
   with documents to be processed and then takes care to process the documents.
 \item Another function is, that it can be used as a library or as a
@@ -158,6 +182,214 @@ The description in the script:
 
 @| @}
 
+
+\subsection{Determine what to do}
+\label{sec:commandlineargs}
+
+The client has been constructed in such a way that, if possible, there
+is no need form arguments and the scripts finds out by itself what to
+do. To this end we have the following mechanisms:
+
+\begin{description}
+\item[Default values] are hard-coded in the script.
+\item[A configuration-file] is maintained.
+\item[Command-line arguments] are parsed.
+\end{description}
+
+@d imports @{@%
+import ConfigParser
+import ArgumentParser
+@| ConfigParser ArgumentParser @}
+
+We need to get the arguments with the following sequence. Set up the
+argument-parser first, because the user may specify a location for the
+config-file. Then set up and read the configfile parameters. The read
+the command-line arguments, allowing to override what is stated in the config-file.
+
+@d determine what to do @{@%
+@< set up argumentparser @>
+@< set up configfile-parser @>
+@< get configfile parameters @>
+@< get argparser parameters @>
+@| @}
+
+Let's first set up command-line parsing:
+
+
+@d determine what to do @{@%
+argparser = argparse.ArgumentParser(
+                description='Client for VUNLP documents parser.',
+                usage= sys.argv[0]+' ([options])'
+            )
+@< add arguments to the argparser @>
+cl_arguments = argparser.parse_args()
+@|argparser cl_arguments @}
+
+Add a text option to \texttt{argparser}. The macro expects three
+arguments, the option-string, the name of the parameter and a help-string.
+
+@d add cl string-parameter @{@%
+argparser.add_argument( '@1'
+                      , dest = '@2'
+                      , help = '@3'
+                      )
+@| @}
+
+@d tentatively get cl-argument @{@%
+if cl_arguments.@2:
+   @1 = cl_arguments.@2
+@| @}
+
+
+The configfile is stored as default under the name \verb|m4_config_filename| in
+the same directory as this module:
+
+@d user-controllable settings @{@%
+config_filename = m4_config_filename
+@|config_filename @}
+
+
+@d default settings @{@%
+__module_dir = os.path.dirname(__file__)
+config_path = os.path.join(__module_dir, config_filename)
+@|__module_dir __file__  config_path@}
+
+(Don't forget to import \texttt{os})
+
+Allow to get the config file from somewhere else:
+
+@d add arguments to the argparser @{@%
+@< add cl string-parameter @(-config@,config_path@Path to config-file@) @>
+@| @}
+
+@d set up configfile-parser @{@%
+@< tentatively get cl-argument @(config_path@,config_path@) @>
+@| @}
+
+
+
+Read the config-file with the \texttt{ConfigParser} module when it is present:
+
+
+@%@d set up configfile-parser @{@%
+@%myConfig = null
+@%if os.path_exists(config_path)
+@%  myConfig = ConfigParser.ConfigParser
+@%  myConfig.read(config_path)
+@%  @< get parameters from the configfile @>
+@%@|myConfig @}
+
+@d set up configfile-parser @{@%
+myConfig = null
+if os.path_exists(config_path)
+  myConfig = ConfigParser.ConfigParser
+  myConfig.read(config_path)
+@|myConfig @}
+
+
+The following macro needs three parameters i.e. 1) variable to be
+initialised; 2) config-file section; 3) config-file variable-name
+
+@d get configfileparameter @{@%
+if my_config.has_option('@2', @3):
+   @1 =  my_config.get('@2', '@3')
+@| @}
+
+
+\subsubsection{URL of the webserver}
+\label{sec:webserverurl}
+
+Currently, the client runs on a test-webserver on the local computer
+of the developer.
+
+@d user-controllable settings @{@%
+webservice_url = m4_defaulturl
+@|webservice_URL @}
+
+@d get parameters from the configfile @{@%
+@< get configfileparameter @(webservice_url@,general@,url@) @>
+@| @}
+
+@d add arguments to the argumentparser @{@%
+@< add cl string-parameter @(-url@,url@URL of the webservice@) @>
+@| @}
+
+@d get argparser parameters @{@%
+@< tentatively get cl-argument @(webservice_url@,url@) @>
+@| @}
+
+
+\subsubsection{Batch-id}
+\label{sec:batchid}
+
+If the batch-id is not known, we will start a new batch. Otherwise we
+will continue an existing batch.
+
+@d default settings @{@%
+batchid = null
+@|batchid @}
+
+@d get parameters from the configfile @{@%
+@< get configfileparameter @(batchid@,general@,batchid@) @>
+@| @}
+
+@d add arguments to the argumentparser @{@%
+@< add cl string-parameter @(-batchid@,batchid@,ID of batch (if present)@) @>
+@| @}
+
+@d get argparser parameters @{@%
+@< tentatively get cl-argument @(batchid@,batchid@) @>
+@| @}
+
+
+\subsubsection{Recipe}
+\label{sec:get_recipe}
+
+@d default settings @{@%
+recipe = null
+@|recipe @}
+
+
+@d get parameters from the configfile @{@%
+@< get configfileparameter @(recipe@,general@,recipe@) @>
+@| @}
+
+@d add arguments to the argumentparser @{@%
+@< add cl string-parameter @(-recipe@,recipe@,recipe@) @>
+@| @}
+
+@d get argparser parameters @{@%
+@< tentatively get cl-argument @(recipe@,recipe@) @>
+@| @}
+
+\subsubsection{Logfiles}
+\label{sec:logfiles}
+
+The user may not want to get logfiles. To suppress logfiles, set
+variable \verb|getlogfiles| to \verb|False|
+
+@d default settings @{@%
+getlogfiles = True
+@|recipe @}
+
+
+@d get parameters from the configfile @{@%
+@< get configfileparameter @(recipe@,general@,recipe@) @>
+@| @}
+
+@d add arguments to the argumentparser @{@%
+@< add cl string-parameter @(-recipe@,recipe@,recipe@) @>
+@| @}
+
+@d get argparser parameters @{@%
+@< tentatively get cl-argument @(recipe@,recipe@) @>
+@| @}
+
+
+
+
+
+
 \subsection{The Client class}
 \label{sec:client}
 
@@ -183,7 +415,7 @@ class Client():
 
 @| Client @}
 
-On instantion, a Client object needs to obtain the \URL{} of the
+On instantiation, a Client object needs to obtain the \URL{} of the
 webservice. Furthermore, it is possible that the object is
 instantiated to handle an ongoing batch process. In that case it has
 to obtain the ID of the batch. Finally, we may enable or disable the
@@ -248,7 +480,7 @@ request to the server:
 
 The general way to process a bunch of text-documents is as follows:
 \begin{enumerate}
-\item Set up a new batch (initbatch method) and provide a \emph{recipy} (description what
+\item Set up a new batch (initbatch method) and provide a \emph{recipe} (description what
   the server must do with each document.
 \item Upload the documents and receive an ID (\emph{handle}) for each
   document (upload method).
@@ -269,11 +501,11 @@ The general way to process a bunch of text-documents is as follows:
 To identify a bunch of files that have to be processed in the same way
 and to avoid confusion with the documents of other users, The files
 and operations will be labelled with an ID, the \emph{batchid}. When
-the batch is set-up the \emph{recipy}, i.e. the parsing operation that
+the batch is set-up the \emph{recipe}, i.e. the parsing operation that
 has to be performed on the documents, is attached to the batchid.
 
 So the first thing we have to do, is to request a batchid and specify
-the recipy:
+the recipe:
 
 @d methods of class Client @{@%
 def initbatch(self, recipe):
@@ -528,6 +760,7 @@ from __future__ import unicode_literals, print_function, absolute_import
 @< class Client @>
 
 if __name__ == '__main__':
+  @< determine what to do @>
   @< script code @>
 
 
@@ -595,11 +828,12 @@ import urllib
 #import vunlp
 import json
 #import clientinterface
+import os
 @| @}
 
 
 
-\subsection{Ramaining things}
+\subsection{Remaining things}
 \label{sec:remaining}
 
 @d  VU python blurb @{@%
